@@ -184,8 +184,66 @@ class ElementTest extends \PHPUnit\Framework\TestCase
         $dom = new \DOMDocument();
         $dom->loadHTML($content);
 
-        $this->assertEquals($expected1, $dom->getElementsByTagName('p')->item(0)->textContent);
-        $this->assertEquals($expected2, $dom->getElementsByTagName('p')->item(1)->textContent);
+        // List should result in <ul><li>...</li></ul>
+        $list = $dom->getElementsByTagName('ul')->item(0);
+
+        // Validate first child of list is LI, and text node on it matches first text item
+        $listItem = $list->childNodes->item(0);
+        $this->assertEquals('li', $listItem->tagName);
+        $this->assertEquals($expected1, $listItem->childNodes->item(0)->textContent);
+
+        // Validate span created w/ bold style and second text item
+        $span = $listItem->childNodes->item(1);
+        $this->assertEquals('span', $span->tagName);
+        $this->assertEquals($expected2, $span->textContent);
+        $this->assertEquals('font-weight: bold;', $span->attributes->getNamedItem('style')->textContent);
+    }
+
+    /**
+     * Test write nested list items
+     */
+    public function testNestedListItems()
+    {
+        $expected1 = 'List item 1';
+        $expected1A = 'List item 1.A';
+        $expected1B = 'List item 1.B';
+        $expected2 = 'List item 2';
+
+        $phpWord = new PhpWord();
+        $section = $phpWord->addSection();
+
+        $listItemRun = $section->addListItemRun(0, null, 'MyParagraphStyle');
+        $listItemRun->addText($expected1);
+        $listItemRun->addListItem($expected1A);
+        $listItemRun->addListItem($expected1B);
+
+        $listItemRun2 = $section->addListItemRun(0, null, 'MyParagraphStyle');
+        $listItemRun2->addText($expected2);
+
+        $htmlWriter = new HTML($phpWord);
+        $content = $htmlWriter->getContent();
+
+        $dom = new \DOMDocument();
+        $dom->loadHTML($content);
+
+        // List should result in nested ULs
+        $list = $dom->getElementsByTagName('ul')->item(0);
+
+        // Validate first child of list is LI, and text node on it matches first text item
+        $listItem = $list->childNodes->item(0);
+        $this->assertEquals('li', $listItem->tagName);
+        $this->assertEquals($expected1, $listItem->childNodes->item(0)->textContent);
+
+        // Validate list item contains nested list
+        $innerList = $listItem->childNodes->item(1);
+
+        // Note: Using index 0 and 2, as HTML outputs new lines after each list element
+        $this->assertEquals($expected1A, $innerList->childNodes->item(0)->textContent);
+        $this->assertEquals($expected1B, $innerList->childNodes->item(2)->textContent);
+
+        // Validate 2nd list item (index 2 due to newlines)
+        $listItem2 = $list->childNodes->item(2);
+        $this->assertEquals($expected2, $listItem2->textContent);
     }
 
     /**

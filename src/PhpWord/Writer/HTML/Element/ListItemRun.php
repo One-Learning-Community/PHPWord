@@ -22,7 +22,7 @@ namespace PhpOffice\PhpWord\Writer\HTML\Element;
  *
  * @since 0.10.0
  */
-class ListItemRun extends TextRun
+class ListItemRun extends ListItem
 {
     /**
      * Write list item
@@ -36,7 +36,7 @@ class ListItemRun extends TextRun
         }
 
         $writer = new Container($this->parentWriter, $this->element);
-        $content = $writer->write() . PHP_EOL;
+        $content = $this->writeOpening() . $writer->write() . $this->writeClosing();
 
         return $content;
     }

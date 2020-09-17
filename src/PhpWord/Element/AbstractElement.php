@@ -504,4 +504,42 @@ abstract class AbstractElement
 
         return $value;
     }
+
+    public function getPreviousElement()
+    {
+        if($this->parent) {
+            $last = null;
+
+            foreach($this->parent->getElements() as $e) {
+                if($e === $this) {
+                    return $last;
+                }
+
+                $last = $e;
+            }
+        }
+
+        return null;
+    }
+
+    public function getNextElement()
+    {
+        if($this->parent)
+        {
+            $returnNext = false;
+
+            foreach($this->parent->getElements() as $e) {
+                if($returnNext) {
+                    return $e;
+                }
+
+                // Set flag to return next element in loop
+                if($e === $this) {
+                    $returnNext = true;
+                }
+            }
+        }
+
+        return null;
+    }
 }

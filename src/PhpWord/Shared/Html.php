@@ -18,6 +18,7 @@
 namespace PhpOffice\PhpWord\Shared;
 
 use PhpOffice\PhpWord\Element\AbstractContainer;
+use PhpOffice\PhpWord\Element\ListItemRun;
 use PhpOffice\PhpWord\Element\Row;
 use PhpOffice\PhpWord\Element\Table;
 use PhpOffice\PhpWord\Settings;
@@ -61,11 +62,11 @@ class Html
 
         // Preprocess: remove all line ends, decode HTML entity,
         // fix ampersand and angle brackets and add body tag for HTML fragments
-        $html = str_replace(array("\n", "\r"), '', $html);
+        $html = str_replace(array("\n", "\r"), ' ', $html);
         $html = str_replace(array('&lt;', '&gt;', '&amp;'), array('_lt_', '_gt_', '_amp_'), $html);
         $html = html_entity_decode($html, ENT_QUOTES, 'UTF-8');
         $html = str_replace('&', '&amp;', $html);
-        $html = str_replace(array('_lt_', '_gt_', '_amp_'), array('&lt;', '&gt;', '&amp;'), $html);
+        $html = str_replace(array('_lt_', '_gt_', '_amp_'), array('&#60;', '&#62;', '&#38;'), $html);
 
         if (false === $fullHTML) {
             $html = '<body>' . $html . '</body>';
@@ -157,10 +158,11 @@ class Html
             'th'        => array('Cell',        $node,  $element,   $styles,    null,   null,           null),
             'ul'        => array('List',        $node,  $element,   $styles,    $data,  null,           null),
             'ol'        => array('List',        $node,  $element,   $styles,    $data,  null,           null),
-            'li'        => array('ListItem',    $node,  $element,   $styles,    $data,  null,           null),
+            'li'        => array('ListItemRun',    $node,  $element,   $styles,    $data,  null,           null),
             'img'       => array('Image',       $node,  $element,   $styles,    null,   null,           null),
             'br'        => array('LineBreak',   null,   $element,   $styles,    null,   null,           null),
             'a'         => array('Link',        $node,  $element,   $styles,    null,   null,           null),
+            'dt'        => array('Property',    null,   null,       $styles,    null,   'bold',         true),
         );
 
         $newElement = null;
@@ -205,13 +207,11 @@ class Html
      */
     protected static function parseChildNodes($node, $element, $styles, $data)
     {
-        if ('li' != $node->nodeName) {
-            $cNodes = $node->childNodes;
-            if (!empty($cNodes)) {
-                foreach ($cNodes as $cNode) {
-                    if ($element instanceof AbstractContainer || $element instanceof Table || $element instanceof Row) {
-                        self::parseNode($cNode, $element, $styles, $data);
-                    }
+        $cNodes = $node->childNodes;
+        if (!empty($cNodes)) {
+            foreach ($cNodes as $cNode) {
+                if ($element instanceof AbstractContainer || $element instanceof Table || $element instanceof Row) {
+                    self::parseNode($cNode, $element, $styles, $data);
                 }
             }
         }
@@ -269,7 +269,10 @@ class Html
         }
 
         if (is_callable(array($element, 'addText'))) {
-            $element->addText($node->nodeValue, $styles['font'], $styles['paragraph']);
+            if ($trimmedNodeValue = trim($node->nodeValue)) {
+                $stripDoubleSpaces = preg_replace('# +#', ' ', $node->nodeValue);
+                $element->addText($stripDoubleSpaces, $styles['font'], $styles['paragraph']);
+            }
         }
     }
 
@@ -474,18 +477,11 @@ class Html
      * @param array &$styles
      * @param array $data
      *
-     * @todo This function is almost the same like `parseChildNodes`. Merged?
-     * @todo As soon as ListItem inherits from AbstractContainer or TextRun delete parsing part of childNodes
      */
-    protected static function parseListItem($node, $element, &$styles, $data)
+    protected static function parseListItemRun($node, $element, &$styles, $data)
     {
-        $cNodes = $node->childNodes;
-        if (!empty($cNodes)) {
-            $listRun = $element->addListItemRun($data['listdepth'], $styles['list'], $styles['paragraph']);
-            foreach ($cNodes as $cNode) {
-                self::parseNode($cNode, $listRun, $styles, $data);
-            }
-        }
+        $element = ($element instanceof ListItemRun) ? $element->getParent() : $element;
+        return $element->addListItemRun($data['listdepth'], $styles['list'], $styles['paragraph']);
     }
 
     /**
