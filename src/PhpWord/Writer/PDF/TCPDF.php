@@ -49,6 +49,12 @@ class TCPDF extends AbstractRenderer implements WriterInterface
         $paperSize = 'A4';
         $orientation = 'P';
 
+        if ($firstSection = current($this->getPhpWord()->getSections())) {
+            $paperSize = strtoupper($firstSection->getStyle()->getPaperSize()) ?: 'A4';
+            // Converts portrait -> P, or landscape -> L
+            $orientation = strtoupper(substr($firstSection->getStyle()->getOrientation(), 0, 1)) ?: 'P';
+        }
+
         // Create PDF
         $pdf = new \TCPDF($orientation, 'pt', $paperSize);
         $pdf->setFontSubsetting(false);
